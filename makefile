@@ -1,6 +1,6 @@
 VERSION ?= latest
 REGISTRY ?= henderiw
-IMG ?= $(REGISTRY)/set-value:${VERSION}
+IMG ?= $(REGISTRY)/nephio-upf-ipam-fn:${VERSION}
 
 .PHONY: all
 all: test

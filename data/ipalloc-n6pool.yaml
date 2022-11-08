@@ -1,0 +1,13 @@
+apiVersion: ipam.nephio.org/v1alpha1
+kind: IPAllocation
+metadata:
+  name: n6pool
+spec:
+  kind: pool
+  prefixLength: 
+  selector:
+    matchLabels:
+      nephio.org/network-instance:  vpc-1
+      nephio.org/network-name: netn6
+status:
+  prefix: 10.20.3.0/24

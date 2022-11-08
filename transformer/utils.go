@@ -68,7 +68,7 @@ func CopyValueToTarget(target *yaml.RNode, value *yaml.RNode, selector *types.Ta
 			return err
 		}
 
-		fmt.Printf("fieldPath: %v\n", fieldPath)
+		//fmt.Printf("fieldPath: %v\n", fieldPath)
 		var targetFields []*yaml.RNode
 		if create {
 			createdField, createErr := target.Pipe(yaml.LookupCreate(value.YNode().Kind, fieldPath...))
@@ -99,9 +99,9 @@ func CopyValueToTarget(target *yaml.RNode, value *yaml.RNode, selector *types.Ta
 }
 
 func SetFieldValue(options *types.FieldOptions, targetField *yaml.RNode, value *yaml.RNode) error {
-	fmt.Printf("setFieldValue options: %v\n", options)
-	fmt.Printf("setFieldValue targetField: %v\n", targetField.MustString())
-	fmt.Printf("setFieldValue value: %v\n", value.MustString())
+	//fmt.Printf("setFieldValue options: %v\n", options)
+	//fmt.Printf("setFieldValue targetField: %v\n", targetField.MustString())
+	//fmt.Printf("setFieldValue value: %v\n", value.MustString())
 	value = value.Copy()
 	if options != nil && options.Delimiter != "" {
 		if targetField.YNode().Kind != yaml.ScalarNode {

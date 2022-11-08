@@ -6,8 +6,8 @@ spec:
   kind: network
   selector:
     matchLabels:
-      nephio.org/network-instance:  vpc-1
+      nephio.org/network-instance: vpc-1
       nephio.org/network-name: netn3
 status:
   prefix: 10.0.0.3/24
-  gateway: 10.0.0.1
+  gateway: "10.0.0.1"

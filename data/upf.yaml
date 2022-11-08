@@ -10,18 +10,18 @@ spec:
   n3:
     endpoints:
     - ipv4Addr:
-      - "0.0.0.0/0"
-      gwv4addr: "0.0.0.0"
+      - 10.0.0.3/24
+      gwv4addr: "10.0.0.1"
   n4:
     endpoints:
     - ipv4Addr:
-      - "0.0.0.0/0"
-      gwv4addr: "0.0.0.0"
+      - 11.0.0.4/24
+      gwv4addr: "11.0.0.1"
   n6:
     endpoints:
       internet:
         ipendpoints:
           ipv4Addr:
-          - "0.0.0.0/0"
-          gwv4addr: "0.0.0.0"
-        ipaddrpool: "0.0.0.0/0"
+          - 12.0.0.6/24
+          gwv4addr: "12.0.0.1"
+        ipaddrpool: "10.20.3.0/24"

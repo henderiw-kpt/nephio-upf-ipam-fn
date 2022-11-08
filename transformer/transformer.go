@@ -54,6 +54,15 @@ func Run(rl *fn.ResourceList) (bool, error) {
 	}
 	// gathers the ip info from the ip-allocations
 	tc.GatherIPInfo(rl)
+	/*
+		for epName, transformData := range tc.data {
+			fmt.Printf("transformData: %s, prefix: %s, gateway: %s\n",
+				epName,
+				transformData.prefix,
+				transformData.gateway,
+			)
+		}
+	*/
 	// transforms the upf with the ip info collected/gathered
 	tc.Transform(rl)
 	return true, nil
@@ -84,7 +93,7 @@ func (t *SetIP) GatherIPInfo(rl *fn.ResourceList) {
 func (t *SetIP) Transform(rl *fn.ResourceList) {
 	// run over the IP addresses and get the resources
 	// apply them to the upf
-	for epInfo, transformData := range t.data {
+	for epName, transformData := range t.data {
 		selector := &types.TargetSelector{
 			Select: &types.Selector{
 				ResId: t.targetResId,
@@ -121,12 +130,13 @@ func (t *SetIP) Transform(rl *fn.ResourceList) {
 				if id.IsSelectedBy(selector.Select.ResId) {
 					//fmt.Printf("selected by resid, selector: %v\n", selector)
 
-					switch epInfo {
+					switch epName {
 					case "n6pool":
 						data, err := getIP(transformData)
 						if err != nil {
 							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
 						}
+						//fmt.Printf("transform input data: %v\n", data.MustString())
 						err = CopyValueToTarget(node, data, selector)
 						if err != nil {
 							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
@@ -136,6 +146,7 @@ func (t *SetIP) Transform(rl *fn.ResourceList) {
 						if err != nil {
 							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
 						}
+						//fmt.Printf("transform input data: %v\n", data.MustString())
 						err = CopyValueToTarget(node, data, selector)
 						if err != nil {
 							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
@@ -160,9 +171,9 @@ func (t *SetIP) Transform(rl *fn.ResourceList) {
 func getIPEndpoint(t *transformData) (*yaml.RNode, error) {
 	var ipEndpointTemplate = `ipv4Addr:
 - {{.Prefix}}
-gwv4addr: "{{.Gateway}}"`
+gwv4addr: {{.Gateway}}`
 
-	tmpl, err := template.New("dummy").Parse(ipEndpointTemplate)
+	tmpl, err := template.New("ep").Parse(ipEndpointTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +191,7 @@ gwv4addr: "{{.Gateway}}"`
 func getIP(t *transformData) (*yaml.RNode, error) {
 	var ipTemplate = `{{.Prefix}}`
 
-	tmpl, err := template.New("dummy").Parse(ipTemplate)
+	tmpl, err := template.New("ip").Parse(ipTemplate)
 	if err != nil {
 		return nil, err
 	}

@@ -19,7 +19,7 @@ package main
 import (
 	"os"
 
-	"github/henderiw/nephio-upf-ipam-fn/transformer"
+	"github/henderiw-nephio/nephio-upf-ipam-fn/transformer"
 
 	"github.com/GoogleContainerTools/kpt-functions-sdk/go/fn"
 )

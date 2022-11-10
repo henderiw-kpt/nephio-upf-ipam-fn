@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/resid"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
+	ipamv1alpha1 "github.com/nokia/k8s-ipam/apis/ipam/v1alpha1"
 )
 
 // SetIP contains the information to perform the mutator function on a package
@@ -44,12 +45,12 @@ type transformData struct {
 func Run(rl *fn.ResourceList) (bool, error) {
 	tc := &SetIP{
 		targetResId: resid.NewResIdWithNamespace(
-			resid.Gvk{Group: "networkfunction.nephio.io", Version: "v1alpha1", Kind: "Upf"}, "free5gc-upf-1", "default"),
+			resid.Gvk{Group: "nf.nephio.org", Version: "v1alpha1", Kind: "UPFDeployment"}, "upf-us-central1", "default"),
 		data: map[string]*transformData{
-			"n3":     {targetSelectorPath: "spec.n3.endpoints.0"},
-			"n4":     {targetSelectorPath: "spec.n4.endpoints.0"},
-			"n6":     {targetSelectorPath: "spec.n6.endpoints.internet.ipendpoints"},
-			"n6pool": {targetSelectorPath: "spec.n6.endpoints.internet.ipaddrpool"},
+			"n3":     {targetSelectorPath: "spec.n3Interfaces.0"},
+			"n4":     {targetSelectorPath: "spec.n4Interfaces.0"},
+			"n6":     {targetSelectorPath: "spec.n6Interfaces.0.interface"},
+			"n6pool": {targetSelectorPath: "spec.n6Interfaces.0.ueIPPool"},
 		},
 	}
 	// gathers the ip info from the ip-allocations
@@ -84,8 +85,9 @@ func (t *SetIP) GatherIPInfo(rl *fn.ResourceList) {
 			if err != nil {
 				rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
 			}
-			t.data[rn.GetName()].prefix = strings.TrimSuffix(prefix.MustString(), "\n")
-			t.data[rn.GetName()].gateway = strings.TrimSuffix(gateway.MustString(), "\n")
+			name := rn.GetLabels()[ipamv1alpha1.NephioInterfaceKey]
+			t.data[name].prefix = strings.TrimSuffix(prefix.MustString(), "\n")
+			t.data[name].gateway = strings.TrimSuffix(gateway.MustString(), "\n")
 		}
 	}
 }

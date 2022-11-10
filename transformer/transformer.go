@@ -17,40 +17,50 @@ limitations under the License.
 package transformer
 
 import (
-	"bytes"
-	"fmt"
 	"strings"
-	"text/template"
 
 	"github.com/GoogleContainerTools/kpt-functions-sdk/go/fn"
 	ipamv1alpha1 "github.com/nokia/k8s-ipam/apis/ipam/v1alpha1"
 	"sigs.k8s.io/kustomize/api/types"
-	"sigs.k8s.io/kustomize/kyaml/resid"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 // SetIP contains the information to perform the mutator function on a package
 type SetIP struct {
-	targetResId resid.ResId
+	//targetResId resid.ResId
+	targetAPIVErsion string
+	targetKind       string
 
 	data map[string]*transformData
 }
 
 type transformData struct {
-	targetSelectorPath string
-	prefix             string
-	gateway            string
+	targetSelectorPathPrefix  string
+	targetSelectorPathGateway string
+	prefix                    string
+	gateway                   string
 }
 
 func Run(rl *fn.ResourceList) (bool, error) {
 	tc := &SetIP{
-		targetResId: resid.NewResIdWithNamespace(
-			resid.Gvk{Group: "nf.nephio.org", Version: "v1alpha1", Kind: "UPFDeployment"}, "upf-us-central1", "default"),
+		targetAPIVErsion: "nf.nephio.org/v1alpha1",
+		targetKind:       "UPFDeployment",
+		//targetResId: resid.NewResIdWithNamespace(
+		//	resid.Gvk{Group: "nf.nephio.org", Version: "v1alpha1", Kind: "UPFDeployment"}, "upf-us-central1", "default"),
 		data: map[string]*transformData{
-			"n3":     {targetSelectorPath: "spec.n3Interfaces.0"},
-			"n4":     {targetSelectorPath: "spec.n4Interfaces.0"},
-			"n6":     {targetSelectorPath: "spec.n6Interfaces.0.interface"},
-			"n6pool": {targetSelectorPath: "spec.n6Interfaces.0.ueIPPool"},
+			"n3": {
+				targetSelectorPathPrefix:  "spec.n3Interfaces.0.ips.0",
+				targetSelectorPathGateway: "spec.n3Interfaces.0.gatewayIPs.0",
+			},
+			"n4": {
+				targetSelectorPathPrefix:  "spec.n4Interfaces.0.ips.0",
+				targetSelectorPathGateway: "spec.n4Interfaces.0.gatewayIPs.0",
+			},
+			"n6": {
+				targetSelectorPathPrefix:  "spec.n6Interfaces.0.interface.ips.0",
+				targetSelectorPathGateway: "spec.n6Interfaces.0.interface.gatewayIPs.0",
+			},
+			"n6pool": {targetSelectorPathPrefix: "spec.n6Interfaces.0.ueIPPool"},
 		},
 	}
 	// gathers the ip info from the ip-allocations
@@ -96,80 +106,69 @@ func (t *SetIP) Transform(rl *fn.ResourceList) {
 	// run over the IP addresses and get the resources
 	// apply them to the upf
 	for epName, transformData := range t.data {
-		selector := &types.TargetSelector{
-			Select: &types.Selector{
-				ResId: t.targetResId,
-			},
-			FieldPaths: []string{
-				transformData.targetSelectorPath,
-			},
-			Options: &types.FieldOptions{
-				Create: true,
-			},
-		}
-		// input validation
-		if selector.Select == nil {
-			rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(fmt.Errorf("target must specify a resource to select"), rl.FunctionConfig))
-		}
-		if len(selector.FieldPaths) == 0 {
-			rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(fmt.Errorf("no fieldPaths selected"), rl.FunctionConfig))
-		}
 		for i, o := range rl.Items {
-			// parse the node using kyaml
-			node, err := yaml.Parse(o.String())
-			if err != nil {
-				rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-			}
-			// provide a resource id based on GVKNNS
-			ids, err := MakeResIds(node)
-			if err != nil {
-				rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-			}
-
-			// filter targets by matching resource IDs
-			//fmt.Printf("resid %v, selectorResId: %v\n", ids, selector.Select.ResId)
-			for _, id := range ids {
-				if id.IsSelectedBy(selector.Select.ResId) {
-					//fmt.Printf("selected by resid, selector: %v\n", selector)
-
-					switch epName {
-					case "n6pool":
-						data, err := getIP(transformData)
-						if err != nil {
-							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-						}
-						//fmt.Printf("transform input data: %v\n", data.MustString())
-						err = CopyValueToTarget(node, data, selector)
-						if err != nil {
-							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-						}
-					default:
-						data, err := getIPEndpoint(transformData)
-						if err != nil {
-							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-						}
-						//fmt.Printf("transform input data: %v\n", data.MustString())
-						err = CopyValueToTarget(node, data, selector)
-						if err != nil {
-							rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-						}
-					}
-					str, err := node.String()
-					if err != nil {
-						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-					}
-					newObj, err := fn.ParseKubeObject([]byte(str))
-					if err != nil {
-						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-					}
-					rl.Items[i] = newObj
-					break
+			if o.GetAPIVersion() == t.targetAPIVErsion && o.GetKind() == t.targetKind {
+				// parse the node using kyaml
+				node, err := yaml.Parse(o.String())
+				if err != nil {
+					rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
 				}
+				switch epName {
+				case "n6pool":
+					if err := transformObject(
+						node,
+						transformData.targetSelectorPathPrefix,
+						transformData.prefix,
+					); err != nil {
+						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+					}
+				default:
+					if err := transformObject(
+						node,
+						transformData.targetSelectorPathPrefix,
+						transformData.prefix,
+					); err != nil {
+						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+					}
+					if err := transformObject(
+						node,
+						transformData.targetSelectorPathGateway,
+						transformData.gateway,
+					); err != nil {
+						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+					}
+				}
+				str, err := node.String()
+				if err != nil {
+					rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+				}
+				newObj, err := fn.ParseKubeObject([]byte(str))
+				if err != nil {
+					rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+				}
+				rl.Items[i] = newObj
+				break
 			}
 		}
 	}
 }
 
+func transformObject(target *yaml.RNode, fp, d string) error {
+	data, err := yaml.Parse(d)
+	if err != nil {
+		return err
+	}
+	err = CopyValueToTarget(target, data, &types.TargetSelector{
+		FieldPaths: []string{fp},
+		Options:    &types.FieldOptions{Create: true},
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/*
 func getIPEndpoint(t *transformData) (*yaml.RNode, error) {
 	var ipEndpointTemplate = `ipv4Addr:
 - {{.Prefix}}
@@ -206,3 +205,4 @@ func getIP(t *transformData) (*yaml.RNode, error) {
 	}
 	return yaml.Parse(buf.String())
 }
+*/

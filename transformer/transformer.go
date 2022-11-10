@@ -23,10 +23,10 @@ import (
 	"text/template"
 
 	"github.com/GoogleContainerTools/kpt-functions-sdk/go/fn"
+	ipamv1alpha1 "github.com/nokia/k8s-ipam/apis/ipam/v1alpha1"
 	"sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/resid"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
-	ipamv1alpha1 "github.com/nokia/k8s-ipam/apis/ipam/v1alpha1"
 )
 
 // SetIP contains the information to perform the mutator function on a package

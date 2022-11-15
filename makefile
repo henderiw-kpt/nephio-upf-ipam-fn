@@ -1,5 +1,5 @@
 VERSION ?= latest
-REGISTRY ?= henderiw
+REGISTRY ?= yndd
 IMG ?= $(REGISTRY)/nephio-upf-ipam-fn:${VERSION}
 
 .PHONY: all

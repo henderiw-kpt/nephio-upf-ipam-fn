@@ -17,91 +17,191 @@ limitations under the License.
 package transformer
 
 import (
-	"strings"
+	"github/henderiw-nephio/nephio-upf-ipam-fn/pkg/ipam"
+	"github/henderiw-nephio/nephio-upf-ipam-fn/pkg/upf"
 
 	"github.com/GoogleContainerTools/kpt-functions-sdk/go/fn"
 	ipamv1alpha1 "github.com/nokia/k8s-ipam/apis/ipam/v1alpha1"
-	"sigs.k8s.io/kustomize/api/types"
-	"sigs.k8s.io/kustomize/kyaml/yaml"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // SetIP contains the information to perform the mutator function on a package
 type SetIP struct {
 	//targetResId resid.ResId
-	targetAPIVErsion string
-	targetKind       string
+	//targetAPIVErsion string
+	//targetKind       string
 
-	data map[string]*transformData
+	//data                   map[string]*transformData
+	upfDeployment          *upf.UpfDeploymentSpec
+	upfDeploymentIndex     int
+	upfDeploymentName      string
+	upfDeploymentNamespace string
+	ipamAllocations        map[string]*ipamv1alpha1.IPAllocationStatus
 }
 
+/*
 type transformData struct {
 	targetSelectorPathPrefix  string
 	targetSelectorPathGateway string
 	prefix                    string
 	gateway                   string
 }
+*/
 
 func Run(rl *fn.ResourceList) (bool, error) {
-	tc := &SetIP{
-		targetAPIVErsion: "nf.nephio.org/v1alpha1",
-		targetKind:       "UPFDeployment",
+	t := &SetIP{
+		//targetAPIVErsion: "nf.nephio.org/v1alpha1",
+		//targetKind:       "UPFDeployment",
 		//targetResId: resid.NewResIdWithNamespace(
 		//	resid.Gvk{Group: "nf.nephio.org", Version: "v1alpha1", Kind: "UPFDeployment"}, "upf-us-central1", "default"),
-		data: map[string]*transformData{
-			"n3": {
-				targetSelectorPathPrefix:  "spec.n3Interfaces.0.ips.0",
-				targetSelectorPathGateway: "spec.n3Interfaces.0.gatewayIPs.0",
+
+		ipamAllocations: map[string]*ipamv1alpha1.IPAllocationStatus{},
+		/*
+			data: map[string]*transformData{
+				"n3": {
+					targetSelectorPathPrefix:  "spec.n3Interfaces.0.ips.0",
+					targetSelectorPathGateway: "spec.n3Interfaces.0.gatewayIPs.0",
+				},
+				"n4": {
+					targetSelectorPathPrefix:  "spec.n4Interfaces.0.ips.0",
+					targetSelectorPathGateway: "spec.n4Interfaces.0.gatewayIPs.0",
+				},
+				"n6": {
+					targetSelectorPathPrefix:  "spec.n6Interfaces.0.interface.ips.0",
+					targetSelectorPathGateway: "spec.n6Interfaces.0.interface.gatewayIPs.0",
+				},
+				"internet": {targetSelectorPathPrefix: "spec.n6Interfaces.0.ueIPPool"},
 			},
-			"n4": {
-				targetSelectorPathPrefix:  "spec.n4Interfaces.0.ips.0",
-				targetSelectorPathGateway: "spec.n4Interfaces.0.gatewayIPs.0",
-			},
-			"n6": {
-				targetSelectorPathPrefix:  "spec.n6Interfaces.0.interface.ips.0",
-				targetSelectorPathGateway: "spec.n6Interfaces.0.interface.gatewayIPs.0",
-			},
-			"n6pool": {targetSelectorPathPrefix: "spec.n6Interfaces.0.ueIPPool"},
-		},
+		*/
 	}
 	// gathers the ip info from the ip-allocations
-	tc.GatherIPInfo(rl)
+	t.GatherIPInfo(rl)
+
 	/*
-		for epName, transformData := range tc.data {
-			fmt.Printf("transformData: %s, prefix: %s, gateway: %s\n",
+		for epName, ipamStatus := range t.ipamAllocations {
+			fmt.Printf("ipam network: %s, prefix: %s, gateway: %s\n",
 				epName,
-				transformData.prefix,
-				transformData.gateway,
+				ipamStatus.AllocatedPrefix,
+				ipamStatus.Gateway,
 			)
 		}
+		if t.upfDeployment == nil {
+			return false, nil
+		}
 	*/
+
 	// transforms the upf with the ip info collected/gathered
-	tc.Transform(rl)
+	t.Transform2(rl)
+
+	/*
+		b, _ := json.MarshalIndent(t.upfDeployment, "", "  ")
+		fmt.Printf("upfdeployment:\n%s\n", string(b))
+	*/
 	return true, nil
 }
 
 func (t *SetIP) GatherIPInfo(rl *fn.ResourceList) {
-	for _, o := range rl.Items {
+	for i, o := range rl.Items {
 		// parse the node using kyaml
-		rn, err := yaml.Parse(o.String())
-		if err != nil {
-			rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+		/*
+			rn, err := yaml.Parse(o.String())
+			if err != nil {
+				rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+			}
+		*/
+		if o.GetAPIVersion() == "nf.nephio.org/v1alpha1" && o.GetKind() == "UPFDeployment" {
+			upfDeployment := upf.UpfDeployment{
+				Obj: *o,
+			}
+			var err error
+			t.upfDeployment, err = upfDeployment.GetSpec()
+			if err != nil {
+				rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+			}
+			t.upfDeploymentIndex = i
+			t.upfDeploymentName = o.GetName()
+			t.upfDeploymentNamespace = o.GetNamespace()
 		}
-		if rn.GetApiVersion() == "ipam.nephio.org/v1alpha1" && rn.GetKind() == "IPAllocation" {
-			prefix, err := GetPrefixFromIPAlloc(rn)
-			if err != nil {
-				rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+		if o.GetAPIVersion() == "ipam.nephio.org/v1alpha1" && o.GetKind() == "IPAllocation" {
+			name := o.GetLabels()[ipamv1alpha1.NephioInterfaceKey]
+
+			//fmt.Printf("name: %s\n", name)
+			ipamAlloc := ipam.IpamAllocation{
+				Obj: *o,
 			}
-			gateway, err := GetGatewayFromIPAlloc(rn)
-			if err != nil {
-				rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
-			}
-			name := rn.GetLabels()[ipamv1alpha1.NephioInterfaceKey]
-			t.data[name].prefix = strings.TrimSuffix(prefix.MustString(), "\n")
-			t.data[name].gateway = strings.TrimSuffix(gateway.MustString(), "\n")
+
+			t.ipamAllocations[name] = ipamAlloc.GetStatus()
+
+			/*
+				prefix, err := GetPrefixFromIPAlloc(rn)
+				if err != nil {
+					rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+				} else {
+					t.data[name].prefix = strings.TrimSuffix(prefix.MustString(), "\n")
+				}
+				gateway, err := GetGatewayFromIPAlloc(rn)
+				if err != nil {
+					rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+				} else {
+					t.data[name].gateway = strings.TrimSuffix(gateway.MustString(), "\n")
+				}
+			*/
 		}
 	}
 }
 
+func (t *SetIP) Transform2(rl *fn.ResourceList) {
+	for epName, ipAllocStatus := range t.ipamAllocations {
+		switch epName {
+		case "n3":
+			for i, ifConfig := range t.upfDeployment.Spec.N3Interfaces {
+				if ifConfig.Name == epName {
+					t.upfDeployment.Spec.N3Interfaces[i].GatewayIPs = []string{ipAllocStatus.Gateway}
+					t.upfDeployment.Spec.N3Interfaces[i].IPs = []string{ipAllocStatus.AllocatedPrefix}
+				}
+			}
+		case "n4":
+			for i, ifConfig := range t.upfDeployment.Spec.N4Interfaces {
+				if ifConfig.Name == epName {
+					t.upfDeployment.Spec.N4Interfaces[i].GatewayIPs = []string{ipAllocStatus.Gateway}
+					t.upfDeployment.Spec.N4Interfaces[i].IPs = []string{ipAllocStatus.AllocatedPrefix}
+				}
+			}
+		case "n9":
+			for i, ifConfig := range t.upfDeployment.Spec.N9Interfaces {
+				if ifConfig.Name == epName {
+					t.upfDeployment.Spec.N9Interfaces[i].GatewayIPs = []string{ipAllocStatus.Gateway}
+					t.upfDeployment.Spec.N9Interfaces[i].IPs = []string{ipAllocStatus.AllocatedPrefix}
+				}
+			}
+		case "n6":
+			for i, ifConfig := range t.upfDeployment.Spec.N6Interfaces {
+				if ifConfig.Interface.Name == epName {
+					t.upfDeployment.Spec.N6Interfaces[i].Interface.GatewayIPs = []string{ipAllocStatus.Gateway}
+					t.upfDeployment.Spec.N6Interfaces[i].Interface.IPs = []string{ipAllocStatus.AllocatedPrefix}
+				}
+			}
+		default:
+			// pool
+			for i, ifConfig := range t.upfDeployment.Spec.N6Interfaces {
+				if ifConfig.DNN == epName {
+					t.upfDeployment.Spec.N6Interfaces[i].UEIPPool = ipAllocStatus.AllocatedPrefix
+				}
+			}
+		}
+	}
+	obj, err := upf.BuildUPFDeploymentFn(types.NamespacedName{
+		Namespace: t.upfDeploymentNamespace,
+		Name:      t.upfDeploymentName,
+	}, *t.upfDeployment.Spec)
+	if err != nil {
+		rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, nil))
+	}
+	rl.Items[t.upfDeploymentIndex] = obj
+
+}
+
+/*
 func (t *SetIP) Transform(rl *fn.ResourceList) {
 	// run over the IP addresses and get the resources
 	// apply them to the upf
@@ -152,7 +252,8 @@ func (t *SetIP) Transform(rl *fn.ResourceList) {
 		}
 	}
 }
-
+*/
+/*
 func transformObject(target *yaml.RNode, fp, d string) error {
 	data, err := yaml.Parse(d)
 	if err != nil {
@@ -167,6 +268,7 @@ func transformObject(target *yaml.RNode, fp, d string) error {
 	}
 	return nil
 }
+*/
 
 /*
 func getIPEndpoint(t *transformData) (*yaml.RNode, error) {

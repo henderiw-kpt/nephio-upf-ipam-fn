@@ -91,9 +91,12 @@ func Run(rl *fn.ResourceList) (bool, error) {
 	*/
 
 	// transforms the upf with the ip info collected/gathered
-	if t.upfDeployment != nil {
-		t.Transform2(rl)
-	}
+	/*
+		if t.upfDeployment != nil {
+			t.Transform2(rl)
+		}
+	*/
+	t.Transform3(rl)
 
 	/*
 		b, _ := json.MarshalIndent(t.upfDeployment, "", "  ")
@@ -151,6 +154,73 @@ func (t *SetIP) GatherIPInfo(rl *fn.ResourceList) {
 		}
 	}
 }
+
+func (t *SetIP) Transform3(rl *fn.ResourceList) {
+	for _, o := range rl.Items {
+		if o.GetAPIVersion() == "nf.nephio.org/v1alpha1" && o.GetKind() == "UPFDeployment" {
+			spec := o.GetMap("spec")
+			for _, upfInterfaceName := range upf.UpfEndpointInterfaces {
+				if upfInterfaceName == "n6Interfaces" {
+					n6itfces, ok, err := spec.NestedSlice(upfInterfaceName)
+					if err != nil {
+						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+					}
+					if ok {
+						for _, n6itfce := range n6itfces {
+							if ipamAllocStatus, ok := t.ipamAllocations[n6itfce.GetString("dnn")]; ok {
+								n6itfce.SetNestedString(ipamAllocStatus.AllocatedPrefix, "ueIPPool")
+							}
+
+							if ipamAllocStatus, ok := t.ipamAllocations[n6itfce.GetMap("interface").GetString("name")]; ok {
+								n6itfce.GetMap("interface").SetNestedStringSlice([]string{ipamAllocStatus.Gateway}, "gatewayIPs")
+								n6itfce.GetMap("interface").SetNestedStringSlice([]string{ipamAllocStatus.AllocatedPrefix}, "ips")
+							}
+						}
+					}
+				} else {
+					itfces, ok, err := spec.NestedSlice(upfInterfaceName)
+					if err != nil {
+						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+					}
+					if ok {
+						for _, itfce := range itfces {
+							if ipamAllocStatus, ok := t.ipamAllocations[itfce.GetString("name")]; ok {
+								itfce.SetNestedStringSlice([]string{ipamAllocStatus.Gateway}, "gatewayIPs")
+								itfce.SetNestedStringSlice([]string{ipamAllocStatus.AllocatedPrefix}, "ips")
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+/*
+func (t *SetIP) Transform3(rl *fn.ResourceList) {
+	for i, o := range rl.Items {
+		if o.GetAPIVersion() == "nf.nephio.org/v1alpha1" && o.GetKind() == "UPFDeployment" {
+			spec := o.GetMap("spec")
+			for epName, ipAllocStatus := range t.ipamAllocations {
+				switch epName {
+				case "n3":
+					eps, ok, err := r.Obj.NestedSlice("n3Interfaces")
+					if err != nil {
+						rl.Results = append(rl.Results, fn.ErrorConfigObjectResult(err, o))
+					}
+					if ok {
+
+					}
+				case "n4":
+				case "n9":
+				case "n6":
+				default:
+					// pool
+			}
+		}
+	}
+}
+*/
 
 func (t *SetIP) Transform2(rl *fn.ResourceList) {
 	for epName, ipAllocStatus := range t.ipamAllocations {

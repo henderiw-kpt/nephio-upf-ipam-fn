@@ -3,8 +3,8 @@ kind: IPAllocation
 metadata:
   creationTimestamp: null
   labels:
-    nephio.org/interface: n6pool
-  name: upf-us-central1-n6pool
+    nephio.org/interface: internet
+  name: upf-us-central1-internet
 spec:
   kind: pool
   prefixLength: 64
@@ -13,4 +13,4 @@ spec:
       nephio.org/network-instance: sample-vpc
       nephio.org/network-name: ue-net
 status:
-  prefix: 10.20.3.0/24
+  allocatedprefix: 10.20.3.0/24

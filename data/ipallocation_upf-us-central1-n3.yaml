@@ -12,5 +12,5 @@ spec:
       nephio.org/network-instance: sample-vpc
       nephio.org/network-name: sample-n3-net
 status:
-  prefix: 10.0.0.3/24
+  allocatedprefix: 10.0.0.3/24
   gateway: "10.0.0.1"

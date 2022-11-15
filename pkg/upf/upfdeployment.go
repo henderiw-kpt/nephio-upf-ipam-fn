@@ -11,7 +11,7 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 )
 
-var upfEndpointInterfaces = []string{"n3Interfaces", "n4Interfaces", "n6Interfaces", "n9Interfaces"}
+var UpfEndpointInterfaces = []string{"n3Interfaces", "n4Interfaces", "n6Interfaces", "n9Interfaces"}
 
 type UpfDeployment struct {
 	Obj fn.KubeObject
@@ -82,7 +82,7 @@ func (r *UpfDeployment) GetSpec() (*UpfDeploymentSpec, error) {
 		},
 	}
 
-	for _, upfEndpointItfces := range upfEndpointInterfaces {
+	for _, upfEndpointItfces := range UpfEndpointInterfaces {
 		//fmt.Printf("finding ep: %s\nupf:\n%s", epName, upf.String())
 		epInterfaces, ok, err := spec.NestedSlice(upfEndpointItfces)
 		if err != nil {

@@ -94,7 +94,6 @@ func Run(rl *fn.ResourceList) (bool, error) {
 	if t.upfDeployment != nil {
 		t.Transform2(rl)
 	}
-	
 
 	/*
 		b, _ := json.MarshalIndent(t.upfDeployment, "", "  ")

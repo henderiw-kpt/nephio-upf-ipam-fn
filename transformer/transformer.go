@@ -26,26 +26,8 @@ import (
 
 // SetIP contains the information to perform the mutator function on a package
 type SetIP struct {
-	//targetResId resid.ResId
-	//targetAPIVErsion string
-	//targetKind       string
-
-	//data                   map[string]*transformData
-	//upfDeployment          *upf.UpfDeploymentSpec
-	//upfDeploymentIndex     int
-	//upfDeploymentName      string
-	//upfDeploymentNamespace string
 	ipamAllocations map[string]*ipamv1alpha1.IPAllocationStatus
 }
-
-/*
-type transformData struct {
-	targetSelectorPathPrefix  string
-	targetSelectorPathGateway string
-	prefix                    string
-	gateway                   string
-}
-*/
 
 func Run(rl *fn.ResourceList) (bool, error) {
 	t := &SetIP{

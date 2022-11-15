@@ -91,7 +91,10 @@ func Run(rl *fn.ResourceList) (bool, error) {
 	*/
 
 	// transforms the upf with the ip info collected/gathered
-	t.Transform2(rl)
+	if t.upfDeployment != nil {
+		t.Transform2(rl)
+	}
+	
 
 	/*
 		b, _ := json.MarshalIndent(t.upfDeployment, "", "  ")

@@ -9,25 +9,25 @@ spec:
     uplinkThroughput: 1G
   n3Interfaces:
   - gatewayIPs:
-    - "10.0.0.1"
+    - ""
     ips:
-    - "10.0.0.3/24"
+    - ""
     name: n3
   n4Interfaces:
   - gatewayIPs:
-    - "11.0.0.1"
+    - ""
     ips:
-    - "11.0.0.4/24"
+    - ""
     name: n4
   n6Interfaces:
   - dnn: internet
     interface:
       gatewayIPs:
-      - "12.0.0.1"
+      - ""
       ips:
-      - "12.0.0.6/24"
+      - ""
       name: n6
-    ueIPPool: "10.20.3.0/24"
+    ueIPPool: ""
 status:
   computeuptime: null
   operationuptime: null

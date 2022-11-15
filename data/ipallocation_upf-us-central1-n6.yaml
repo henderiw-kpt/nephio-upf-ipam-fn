@@ -12,5 +12,5 @@ spec:
       nephio.org/network-instance: sample-vpc
       nephio.org/network-name: sample-n6-net
 status:
-  prefix: 12.0.0.6/24
+  allocatedprefix: 12.0.0.6/24
   gateway: "12.0.0.1"

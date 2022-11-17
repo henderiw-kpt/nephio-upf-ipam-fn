@@ -1,0 +1,6 @@
+apiVersion: nf.nephio.org/v1alpha1
+kind: UPFDeployment
+metadata:
+  creationTimestamp: null
+  name: upf-us-central1
+spec:
